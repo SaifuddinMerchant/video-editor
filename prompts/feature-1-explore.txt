@@ -1,0 +1,36 @@
+$openspec-explore
+
+Read README.md, AGENTS.md, and openspec/config.yaml to understand the project context.
+
+This is a greenfield Python video editing project with no existing implementation.
+
+The primary objective is to accept a recorded MP4 video file, remove unwanted sections, and generate a separate edited video file.
+
+Help me explore and define the minimum viable product (MVP).
+
+Explore the following topics:
+
+- Supported input and output video formats.
+- Criteria for identifying unwanted video segments.
+- Manual versus automated segment selection.
+- Video and audio quality preservation.
+- Timestamp and cutting accuracy.
+- Application interface.
+- Video processing libraries and tools.
+- Error handling and logging.
+- Testing strategy.
+- Potential future enhancements.
+
+Development constraints:
+
+- Use Python, pip, and venv.
+- Preserve the original video recording.
+- Minimize external dependencies.
+- Avoid unnecessary architectural complexity.
+- Develop features incrementally using OpenSpec.
+
+Ask me clarifying questions throughout the exploration process rather than making assumptions.
+
+Do not write implementation code, install dependencies, or create a change proposal yet.
+
+Focus exclusively on understanding requirements, evaluating technical options, and defining the MVP scope.

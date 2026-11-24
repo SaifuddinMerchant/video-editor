@@ -1,0 +1,87 @@
+schema: spec-driven
+
+context: |
+  # Project Overview
+  A Python application for editing recorded video files
+  by removing unwanted segments and generating a separate
+  edited video file.
+
+  # Technology Stack
+  - Language: Python 3.14+
+  - Package management: pip
+  - Virtual environment: venv
+  - Dependency manifest: requirements.txt
+  - Version control: Git
+  - Development methodology: OpenSpec
+
+  # Project Structure
+  - src/video_editor/: Application source code
+  - tests/: Automated tests
+  - input/: Original video recordings
+  - output/: Generated video recordings
+
+  # Project Constraints
+  - Never modify or overwrite original video recordings.
+  - Initially support recorded MPG files as input.
+  - Minimize third-party dependencies.
+  - Prefer Python standard libraries where practical.
+  - Avoid premature optimization and overengineering.
+  - Maintain separation between video processing and editing logic.
+  - All dependencies must support Python 3.14.
+  - Use modern Python language features where appropriate.
+  - Backward compatibility with earlier Python versions is not required.
+
+  # Development Principles
+  - Develop incrementally.
+  - Follow AGENTS.md for development instructions.
+  - Do not assume unapproved functional requirements.
+  - Ask for clarification when requirements are ambiguous.
+  - Obtain approval before introducing major dependencies.
+  - Treat approved specifications as the source of truth.
+  - Verify implementation before archiving changes.
+
+  # Undecided Requirements
+  - Video processing engine.
+  - Output video format.
+  - Segment selection methodology.
+  - Manual versus automated editing.
+  - Application interface.
+  - Video and audio quality requirements.
+  - Performance requirements.
+
+  Resolve these decisions through exploration and
+  approved change proposals.
+
+rules:
+  proposal:
+    - Clearly explain the purpose of the change.
+    - Define scope and out-of-scope functionality.
+    - Identify assumptions and unresolved questions.
+    - Keep changes focused and independently testable.
+    - Identify new external dependencies.
+
+  specs:
+    - Describe observable behavior rather than implementation.
+    - Use SHALL or MUST for mandatory requirements.
+    - Use Given/When/Then acceptance scenarios.
+    - Include normal, edge, and failure scenarios.
+    - Define measurable acceptance criteria.
+    - Avoid introducing unapproved requirements.
+
+  design:
+    - Document technical decisions and their rationale.
+    - Identify alternatives and trade-offs.
+    - Prefer the simplest viable solution.
+    - Consider video quality and audio synchronization.
+    - Consider timestamp accuracy and file integrity.
+    - Consider memory and disk usage for large recordings.
+    - Document external dependencies and platform limitations.
+
+  tasks:
+    - Break implementation into small, actionable tasks.
+    - Organize tasks in dependency order.
+    - Include unit and integration testing where applicable.
+    - Include error handling and relevant edge cases.
+    - Include documentation updates when necessary.
+    - Include verification against approved specifications.
+    - Do not include functionality outside the approved scope.
