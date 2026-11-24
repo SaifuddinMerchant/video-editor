@@ -75,8 +75,47 @@ temporary output was removed afterward. No source recording was generated or
 modified. MoviePy emitted NumPy deprecation and subprocess resource warnings
 during this passing check.
 
-This verifies the dependency setup; the application and its permanent integration
-test remain to be implemented.
+Clipping, merging, and the permanent duration integration test are now implemented;
+the CLI and protected output publication are pending.
+
+## Manual selection files
+
+Use a UTF-8 text file with one `start,end` range per line to select sections to
+**keep** on the original recording's timeline:
+
+```text
+0,5
+10,20
+90,end
+```
+
+Use whole-number seconds written as ASCII digits (`[0-9]+`): `0,5` is valid;
+`0,2.4` and `0,5.0` are invalid. Ranges include the start and exclude the end,
+must stay within the recording, and must be chronological without overlap.
+Adjacent ranges are allowed. Blank lines and surrounding whitespace are ignored.
+
+The case-insensitive `end` keyword is allowed only as the final range's endpoint
+and preserves the exact video duration, including fractional seconds.
+
+## Clipping and merging
+
+Each selected segment has length `end - start`. MoviePy clips these ranges from
+the original recording and merges them in order, using default MP4 writing
+settings. Selected audio follows the clips automatically; recordings without
+audio produce video-only output.
+
+The integration test checks that final duration differs from the sum of selected
+lengths by no more than **0.5 seconds**. Rendering uses memory and needs extra disk
+space for temporary video and audio; large recordings may take time. Frame-rate,
+frame-accuracy, encoding-quality, and measured audio-sync guarantees are outside
+scope.
+
+Run tests using the supplied `input/sample.mp4` and `input/sample-selections.txt`:
+
+```powershell
+$env:PYTHONPATH = (Resolve-Path .\src).Path
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
 
 ## Project Structure
 
@@ -89,9 +128,11 @@ test remain to be implemented.
 
 ## Development Status
 
-Runtime and dependency setup established. The approved workflow is a Python CLI
+Runtime, manual selection validation, and clipping/merging are implemented.
+The approved workflow is a Python CLI
 with explicit input, selection-file, and output paths, manual keep ranges, and
-MoviePy's default MP4 writing and audio handling. Editing and CLI implementation
-are pending. Automatic editing, other formats, custom encoding settings, and
+MoviePy's default MP4 writing and audio handling. CLI integration, preflight path
+checks, and protected output publication are pending. Automatic editing, other
+formats, custom encoding settings, and
 quality, synchronization, frame-accuracy, or performance guarantees are outside
 the current change.
