@@ -1,0 +1,25 @@
+# Virtual environment
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Testing and tooling
+.pytest_cache/
+.ruff_cache/
+.coverage
+
+# Environment variables
+.env
+
+# Video files
+input/*
+output/*
+!input/.gitkeep
+!output/.gitkeep
+
+# Operating system
+.DS_Store
+Thumbs.db
