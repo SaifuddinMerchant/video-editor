@@ -63,6 +63,28 @@ class SourceLifetimeTests(unittest.TestCase):
                 self.source.close.assert_called_once_with()
 
 
+    def test_source_cleanup_error_does_not_mask_consumer_failure(self):
+        self.source.close.side_effect = OSError("Reader close failed")
+        failure = ValueError("Original validation failure")
+        with self.assertRaises(ValueError) as caught:
+            with open_source("input/sample.mp4"):
+                raise failure
+        self.assertIs(caught.exception, failure)
+        self.assertIn("Reader close failed", " ".join(failure.__notes__))
+
+    def test_unavailable_ffmpeg_reports_dependency_reinstall_command(self):
+        self.moviepy.VideoFileClip.side_effect = FileNotFoundError("Bundled FFmpeg missing")
+        with self.assertRaisesRegex(EditingError, "restore bundled FFmpeg.*pip install"):
+            with open_source("input/sample.mp4"):
+                self.fail("No usable reader should be yielded")
+
+    def test_unusable_dependency_import_reports_setup_command(self):
+        with patch.dict(sys.modules, {"moviepy": None}):
+            with self.assertRaisesRegex(EditingError, "dependencies.*pip install.*requirements.txt"):
+                with open_source("input/sample.mp4"):
+                    self.fail("Unavailable MoviePy should not be used")
+
+
 class RenderingTests(unittest.TestCase):
     def setUp(self):
         self.source = Mock(spec=["duration", "close", "subclipped"])
@@ -156,6 +178,22 @@ class RenderingTests(unittest.TestCase):
         clip.close.assert_called_once_with()
         self.source.close.assert_called_once_with()
         self.merged.write_videofile.assert_not_called()
+
+
+    def test_clip_cleanup_errors_preserve_write_failure_and_attempt_all_closures(self):
+        clip = Mock(spec=["close"])
+        self.source.subclipped.return_value = clip
+        failure = OSError("Encoder failed")
+        self.merged.write_videofile.side_effect = failure
+        self.merged.close.side_effect = OSError("Merged close failed")
+        clip.close.side_effect = OSError("Subclip close failed")
+        with self.assertRaises(OSError) as caught:
+            with open_source("input/sample.mp4") as source:
+                render_segments(source, parse_segments("0,5", 90.4), self.output)
+        self.assertIs(caught.exception, failure)
+        self.assertIn("Merged close failed", " ".join(failure.__notes__))
+        self.assertIn("Subclip close failed", " ".join(failure.__notes__))
+        self.source.close.assert_called_once_with()
 
 
 if __name__ == "__main__":

@@ -41,8 +41,6 @@ directory for imports in the current shell:
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 $env:PYTHONPATH = (Resolve-Path .\src).Path
-python -m pip check
-python -c "import video_editor; from importlib.metadata import version; from moviepy import VideoFileClip, concatenate_videoclips; print('MoviePy', version('moviepy'))"
 ```
 
 If PowerShell blocks activation, use the environment's interpreter directly:
@@ -50,8 +48,6 @@ If PowerShell blocks activation, use the environment's interpreter directly:
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 $env:PYTHONPATH = (Resolve-Path .\src).Path
-.\.venv\Scripts\python.exe -m pip check
-.\.venv\Scripts\python.exe -c "import video_editor; from importlib.metadata import version; from moviepy import VideoFileClip, concatenate_videoclips; print('MoviePy', version('moviepy'))"
 ```
 
 Set `PYTHONPATH` again in each new shell before running application modules or
@@ -66,17 +62,46 @@ Pillow 11.3.0, proglog 0.1.12, python-dotenv 1.2.4, tqdm 4.70.1, and colorama
 0.4.6. Only the directly selected MoviePy release is pinned in `requirements.txt`;
 pip resolves its transitive dependencies.
 
-An ad hoc duration integration test read the supplied `input/sample.mp4` and
-`input/sample-selections.txt` as-is, clipped and merged their selected ranges
-with MoviePy defaults, and reopened a separate temporary MP4. Expected duration
-was 16.12 seconds and actual duration was 16.12 seconds (absolute tolerance:
-0.5 seconds). The test ran with an empty `PATH` using pip's bundled FFmpeg;
-temporary output was removed afterward. No source recording was generated or
-modified. MoviePy emitted NumPy deprecation and subprocess resource warnings
-during this passing check.
+Final acceptance: **63 tests passed, with no skips**, after removing the
+privilege-dependent symbolic-link test. The single CLI integration test read the supplied sample pair
+as-is and passed: **16.12 seconds expected, 16.12 seconds actual**, with a fixed
+**0.5-second absolute tolerance**. Temporary output was removed afterward.
 
-Clipping, merging, and the permanent duration integration test are now implemented;
-the CLI and protected output publication are pending.
+MoviePy uses FFmpeg bundled inside `.venv`; neither system FFmpeg nor ffprobe is
+on `PATH`. Originals were preserved. Review against both capability specs
+confirmed segment validation, clipping/merging, and protected publication with
+library defaults, without custom media settings or additional installation
+requirements. MoviePy emitted NumPy deprecation and subprocess resource warnings
+during the passing test run.
+
+The CLI validates all selections before rendering, keeps temporary video/audio
+beside the destination, and publishes only a completed, closed result without
+overwriting existing files.
+
+## Usage
+
+From the repository root, with your recording and selections under `input/`:
+
+```powershell
+$env:PYTHONPATH = (Resolve-Path .\src).Path
+.\.venv\Scripts\python.exe -m video_editor --input input/sample.mp4 --segments input/sample-selections.txt --output output/edited-sample.mp4
+```
+
+The output parent directory must already exist, and the output filename must be
+new. Quote paths containing spaces. Use `--help` for argument help. MoviePy shows
+rendering progress; success prints the output path and returns exit status 0.
+Errors go to standard error and return nonzero. Originals are never overwritten.
+
+### Troubleshooting
+
+| Problem | Action |
+| --- | --- |
+| Missing or unusable dependencies | Activate `.venv` and run `python -m pip install -r requirements.txt`; use `--force-reinstall` if bundled FFmpeg needs restoring. |
+| Invalid selections | Correct the reported line; use whole-number seconds and chronological, non-overlapping ranges within the recording. |
+| Existing output or input alias | Choose a different output filename. Files created during rendering are also protected. |
+| Rendering or permission failure | Check source readability, destination permissions, and free disk space. Partial renders are not published. |
+| Cancellation | Press Ctrl+C; the command attempts cleanup and returns status 130. |
+| Cleanup failure | Close programs holding files open and remove only the reported temporary directory. A completed output may already exist. |
 
 ## Manual selection files
 
@@ -110,7 +135,10 @@ space for temporary video and audio; large recordings may take time. Frame-rate,
 frame-accuracy, encoding-quality, and measured audio-sync guarantees are outside
 scope.
 
-Run tests using the supplied `input/sample.mp4` and `input/sample-selections.txt`:
+Provide your own `input/sample.mp4` and matching `input/sample-selections.txt`
+for the single media integration test; both files are read as-is. Missing samples
+fail with `Required integration sample files missing` and the expected paths;
+the test never generates or replaces them. Run the unit and integration tests:
 
 ```powershell
 $env:PYTHONPATH = (Resolve-Path .\src).Path
@@ -125,14 +153,3 @@ $env:PYTHONPATH = (Resolve-Path .\src).Path
 - output/ - Generated video recordings.
 - requirements.txt - Python dependencies.
 - AGENTS.md - AI coding assistant instructions.
-
-## Development Status
-
-Runtime, manual selection validation, and clipping/merging are implemented.
-The approved workflow is a Python CLI
-with explicit input, selection-file, and output paths, manual keep ranges, and
-MoviePy's default MP4 writing and audio handling. CLI integration, preflight path
-checks, and protected output publication are pending. Automatic editing, other
-formats, custom encoding settings, and
-quality, synchronization, frame-accuracy, or performance guarantees are outside
-the current change.

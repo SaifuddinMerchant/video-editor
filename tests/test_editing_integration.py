@@ -4,8 +4,8 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from video_editor.editing import open_source, render_segments
-from video_editor.segments import read_segments
+from video_editor.cli import main
+from video_editor.editing import open_source
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -35,8 +35,12 @@ class EditingIntegrationTests(unittest.TestCase):
                         start, end = (value.strip() for value in line.split(","))
                         endpoint = source.duration if end.lower() == "end" else int(end)
                         expected += endpoint - int(start)
-                segments = read_segments(selections_path, source.duration)
-                render_segments(source, segments, output)
+
+            status = main([
+                "--input", str(video_path), "--segments", str(selections_path),
+                "--output", str(output),
+            ])
+            self.assertEqual(status, 0, "Sample CLI edit failed; see the console error above")
 
             # Close all render resources before reopening the completed file.
             with open_source(output) as completed:
