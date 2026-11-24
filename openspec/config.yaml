@@ -22,7 +22,7 @@ context: |
 
   # Project Constraints
   - Never modify or overwrite original video recordings.
-  - Initially support recorded MPG files as input.
+  - Support MP4 screen recordings from Windows Snipping Tool and separate MP4 output.
   - Minimize third-party dependencies.
   - Prefer Python standard libraries where practical.
   - Avoid premature optimization and overengineering.
@@ -40,17 +40,20 @@ context: |
   - Treat approved specifications as the source of truth.
   - Verify implementation before archiving changes.
 
-  # Undecided Requirements
-  - Video processing engine.
-  - Output video format.
-  - Segment selection methodology.
-  - Manual versus automated editing.
-  - Application interface.
-  - Video and audio quality requirements.
-  - Performance requirements.
+  # Approved Core Workflow
+  - Use MoviePy 2.x with pip-supplied FFmpeg; no separate system FFmpeg/ffprobe.
+  - Provide a Python CLI with explicit source, selection-file, and output paths.
+  - Read manual keep ranges on the original timeline from a UTF-8 text file.
+  - Require digit-only whole-second numeric timestamps; allow final end keyword.
+  - Validate all ranges before clipping and merging into a separate MP4.
+  - Use MoviePy's default writing and audio handling without custom media settings.
+  - Verify retained duration with a fixed 0.5-second absolute tolerance.
+  - Protect inputs and existing outputs; publish only completed output.
 
-  Resolve these decisions through exploration and
-  approved change proposals.
+  # Scope Limits
+  - Automatic editing, other formats, GUI, and batch editing are out of scope.
+  - No frame-rate, frame-accuracy, quality, synchronization, or performance guarantees.
+  - Resolve future scope through exploration and approved change proposals.
 
 rules:
   proposal:

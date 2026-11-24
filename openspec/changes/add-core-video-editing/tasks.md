@@ -2,8 +2,8 @@
 
 ## 1. Establish the supported runtime and setup
 
-- [ ] 1.1 Create or use the project's `.venv` with Python 3.14+, install a released MoviePy 2.x dependency set, and record the tested release in `requirements.txt`; verify import and use the basic duration integration test as the bundled-tooling smoke check without system FFmpeg/ffprobe. Do not add a separate encoder/decoder validation suite or generate a source video.
-- [ ] 1.2 Update README setup for the tested pip/venv workflow and source-layout imports (`PYTHONPATH` pointing to `src`), and reconcile the superseded MPG/undecided-feature wording in README and `openspec/config.yaml`; verify the documented setup commands and preserve unrelated project rules.
+- [x] 1.1 Create or use the project's `.venv` with Python 3.14+, install a released MoviePy 2.x dependency set, and record the tested release in `requirements.txt`; verify import and use the basic duration integration test as the bundled-tooling smoke check without system FFmpeg/ffprobe. Do not add a separate encoder/decoder validation suite or generate a source video.
+- [x] 1.2 Update README setup for the tested pip/venv workflow and source-layout imports (`PYTHONPATH` pointing to `src`), and reconcile the superseded MPG/undecided-feature wording in README and `openspec/config.yaml`; verify the documented setup commands and preserve unrelated project rules.
 
 ## 2. Implement and document manual selection validation
 
