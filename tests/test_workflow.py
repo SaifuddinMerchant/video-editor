@@ -118,6 +118,17 @@ class WorkflowTests(unittest.TestCase):
         self.open_mock.assert_not_called()
         self.render_mock.assert_not_called()
 
+    def test_output_extension_error_precedes_missing_source(self):
+        missing = self.root / "missing.mp4"
+        output = self.output.with_suffix(".avi")
+        with self.assertRaises(editing.EditingError) as raised:
+            editing.edit_video(missing, self.selections, output)
+        self.assertEqual(
+            str(raised.exception), f"Output video must have an MP4 extension: '{output}'"
+        )
+        self.open_mock.assert_not_called()
+        self.render_mock.assert_not_called()
+
     def test_missing_inputs_and_destination_parent_are_rejected(self):
         for video, selections, output in (
             (self.root / "missing.mp4", self.selections, self.output),
