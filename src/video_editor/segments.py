@@ -33,6 +33,31 @@ def _whole_seconds(token: str, line_number: int) -> int:
         ) from error
 
 
+def _parse_segment(line: str, line_number: int, duration: float, is_final: bool) -> Segment:
+    """Parse and validate one range against the source duration."""
+    values = line.split(",")
+    if len(values) != 2:
+        raise SelectionError(
+            f"line {line_number}: expected exactly two comma-separated values"
+        )
+    start, end = (value.strip() for value in values)
+    if start.lower() == "end" or (
+        end.lower() == "end" and not is_final
+    ):
+        raise SelectionError(
+            f"line {line_number}: 'end' is allowed only as the second value "
+            "of the final nonblank line"
+        )
+    start_seconds = _whole_seconds(start, line_number)
+    end_seconds = duration if end.lower() == "end" else _whole_seconds(end, line_number)
+    if not 0 <= start_seconds < end_seconds <= duration:
+        raise SelectionError(
+            f"line {line_number}: range must satisfy 0 <= start < end <= "
+            f"duration ({duration} seconds)"
+        )
+    return Segment(start_seconds, end_seconds, line_number)
+
+
 def parse_segments(text: str, duration: float) -> list[Segment]:
     """Validate all keep ranges against a finite, positive source duration.
 
@@ -52,35 +77,17 @@ def parse_segments(text: str, duration: float) -> list[Segment]:
     ]
     if not lines:
         raise SelectionError("selection file must contain at least one range")
+    final_line = lines[-1][0]
     segments = []
     for line_number, line in lines:
-        values = line.split(",")
-        if len(values) != 2:
-            raise SelectionError(
-                f"line {line_number}: expected exactly two comma-separated values"
-            )
-        start, end = (value.strip() for value in values)
-        if start.lower() == "end" or (
-            end.lower() == "end" and line_number != lines[-1][0]
-        ):
-            raise SelectionError(
-                f"line {line_number}: 'end' is allowed only as the second value "
-                "of the final nonblank line"
-            )
-        start_seconds = _whole_seconds(start, line_number)
-        end_seconds = duration if end.lower() == "end" else _whole_seconds(end, line_number)
-        if not 0 <= start_seconds < end_seconds <= duration:
-            raise SelectionError(
-                f"line {line_number}: range must satisfy 0 <= start < end <= "
-                f"duration ({duration} seconds)"
-            )
-        if segments and start_seconds < segments[-1].end:
+        segment = _parse_segment(line, line_number, duration, line_number == final_line)
+        if segments and segment.start < segments[-1].end:
             raise SelectionError(
                 f"line {line_number}: range overlaps or is out of order with "
                 f"line {segments[-1].line_number}; start must be at or after "
                 "the previous end"
             )
-        segments.append(Segment(start_seconds, end_seconds, line_number))
+        segments.append(segment)
     return segments
 
 

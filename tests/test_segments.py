@@ -180,6 +180,15 @@ class SegmentValidationTests(unittest.TestCase):
             [Segment(5, 10, 1), Segment(20, 25, 2)],
         )
 
+    def test_earlier_overlap_takes_precedence_over_later_malformed_range(self):
+        with self.assertRaises(SelectionError) as raised:
+            parse_segments("0,5\n4,8\nmalformed", 10)
+        self.assertEqual(
+            str(raised.exception),
+            "line 2: range overlaps or is out of order with line 1; "
+            "start must be at or after the previous end",
+        )
+
     def test_overlap_duplicates_and_out_of_order_ranges_identify_both_lines(self):
         for second in ("19,25", "0,5", "10,20", "12,15"):
             with self.subTest(second=second):

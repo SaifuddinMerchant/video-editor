@@ -1,6 +1,6 @@
 """MoviePy source lifetime and rendering for validated keep ranges."""
 
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from contextlib import ExitStack, contextmanager
 import math
 import os
@@ -93,21 +93,25 @@ def _load_moviepy():
     return moviepy
 
 
-def _validate_paths(input_path: Path, segments_path: Path, output_path: Path):
-    for label, path in (("Input", input_path), ("Output", output_path)):
-        if path.suffix.lower() != ".mp4":
-            raise EditingError(f"{label} video must have an MP4 extension: '{path}'")
-    for label, path in (("Source video", input_path), ("Selection file", segments_path)):
-        if not path.is_file():
-            raise EditingError(f"{label} is missing or is not a file: '{path}'")
-        try:
-            with path.open("rb"):
-                pass
-        except OSError as error:
-            raise EditingError(f"Cannot read {label.lower()} '{path}': {error}") from error
+def _require_mp4_extension(label: str, path: Path) -> None:
+    """Check a video filename before accessing either input."""
+    if path.suffix.lower() != ".mp4":
+        raise EditingError(f"{label} video must have an MP4 extension: '{path}'")
 
-    source = input_path.resolve(strict=True)
-    selections = segments_path.resolve(strict=True)
+
+def _require_readable_file(label: str, path: Path) -> None:
+    """Require an existing input file that can be opened for reading."""
+    if not path.is_file():
+        raise EditingError(f"{label} is missing or is not a file: '{path}'")
+    try:
+        with path.open("rb"):
+            pass
+    except OSError as error:
+        raise EditingError(f"Cannot read {label.lower()} '{path}': {error}") from error
+
+
+def _validate_destination(output_path: Path, source: Path, selections: Path) -> Path:
+    """Resolve a new destination while checking aliases using the supplied path."""
     output = output_path.resolve()
     exists = os.path.lexists(output_path)
     for original in (source, selections):
@@ -117,6 +121,20 @@ def _validate_paths(input_path: Path, segments_path: Path, output_path: Path):
         raise EditingError(f"Output already exists; choose a new path: '{output_path}'")
     if not output.parent.is_dir():
         raise EditingError(f"Output parent directory must already exist: '{output.parent}'")
+    return output
+
+
+def _validate_paths(
+    input_path: Path, segments_path: Path, output_path: Path
+) -> tuple[Path, Path, Path]:
+    _require_mp4_extension("Input", input_path)
+    _require_mp4_extension("Output", output_path)
+    _require_readable_file("Source video", input_path)
+    _require_readable_file("Selection file", segments_path)
+
+    source = input_path.resolve(strict=True)
+    selections = segments_path.resolve(strict=True)
+    output = _validate_destination(output_path, source, selections)
     return source, selections, output
 
 
@@ -128,8 +146,20 @@ def _publish(rendered: Path, output: Path) -> None:
         os.link(rendered, output)  # Preserve no-overwrite semantics on POSIX too.
 
 
+@contextmanager
+def _temporary_render_path(parent: Path) -> Iterator[Path]:
+    """Keep the rendered MP4 until the caller finishes publication."""
+    temporary = tempfile.TemporaryDirectory(prefix=".video-editor-", dir=parent)
+    with _cleanup_after(temporary.cleanup, f"temporary directory '{temporary.name}'"):
+        yield Path(temporary.name) / "edited.mp4"
+
+
 def edit_video(input_path: str | Path, segments_path: str | Path, output_path: str | Path) -> Path:
-    """Validate, render privately, close resources, and publish one new MP4."""
+    """Validate selections, render, close the source, and publish the new MP4.
+
+    The outer stack keeps temporary output alive through source closure and
+    publication, then cleans up the temporary directory.
+    """
     operation = "validating input and output paths"
     try:
         source_path, selections_path, output = _validate_paths(
@@ -140,11 +170,7 @@ def edit_video(input_path: str | Path, segments_path: str | Path, output_path: s
             with open_source(source_path) as source:
                 segments = read_segments(selections_path, source.duration)
                 operation = f"creating temporary output in '{output.parent}'"
-                temporary = tempfile.TemporaryDirectory(prefix=".video-editor-", dir=output.parent)
-                resources.enter_context(_cleanup_after(
-                    temporary.cleanup, f"temporary directory '{temporary.name}'"
-                ))
-                rendered = Path(temporary.name) / "edited.mp4"
+                rendered = resources.enter_context(_temporary_render_path(output.parent))
                 operation = "rendering selected video (check input media, free disk space, and permissions)"
                 render_segments(source, segments, rendered)
                 operation = "closing source video resources"
