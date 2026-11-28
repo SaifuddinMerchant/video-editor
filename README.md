@@ -1,112 +1,42 @@
 # Video Editor
 
-## Overview
-
-A Python project for editing recorded video files by removing unwanted sections and generating a new video file while preserving the original recording.
-
-## Objectives
-
-- Accept MP4 screen recordings from Windows Snipping Tool.
-- Read manually selected sections to keep from a text file.
-- Remove unwanted segments.
-- Combine retained segments into a separate MP4 using MoviePy's defaults.
-- Preserve the original video file.
-
-## Requirements
-
-- Windows with Python 3.14+ and pip.
-- MoviePy 2.2.1 and its transitive dependencies, installed through pip.
-
-The Windows pip dependency stack supplies FFmpeg through `imageio-ffmpeg`;
-no separate system FFmpeg or ffprobe installation is required.
+Keep selected sections of a Windows Snipping Tool MP4 recording and save them
+as a new MP4. The original recording stays intact.
 
 ## Setup
 
-Run these PowerShell commands from the repository root. Confirm that `python`
-is Python 3.14 or newer before creating the local environment:
+You need Windows, Python 3.14 or newer, and pip. From the repository root, run
+these commands in PowerShell:
 
 ```powershell
-python --version
 python -m venv .venv
-```
-
-If `python` resolves to an unavailable Windows Store alias, use the full path
-to your installed Python 3.14+ executable for those two commands. An existing
-`.venv` can be reused after checking `.\.venv\Scripts\python.exe --version`.
-
-Activate the virtual environment, install dependencies, and set the source
-directory for imports in the current shell:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-$env:PYTHONPATH = (Resolve-Path .\src).Path
-```
-
-If PowerShell blocks activation, use the environment's interpreter directly:
-
-```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-$env:PYTHONPATH = (Resolve-Path .\src).Path
 ```
 
-Set `PYTHONPATH` again in each new shell before running application modules or
-tests. The project uses source-layout imports without an installation or
-packaging step.
+[requirements.txt](requirements.txt) pins MoviePy 2.2.1. Pip installs its
+dependencies, including `imageio-ffmpeg`, which supplies FFmpeg on Windows.
+You can run the editor with the FFmpeg bundled in the virtual environment.
 
-### Setup verification
+## Edit a recording
 
-Verified on Windows with Python 3.14.5 and MoviePy 2.2.1. The installed dependency
-set was decorator 5.3.2, imageio 2.38.2, imageio-ffmpeg 0.8.1, NumPy 2.5.5,
-Pillow 11.3.0, proglog 0.1.12, python-dotenv 1.2.4, tqdm 4.70.1, and colorama
-0.4.6. Only the directly selected MoviePy release is pinned in `requirements.txt`;
-pip resolves its transitive dependencies.
-
-Final acceptance: **63 tests passed, with no skips**, after removing the
-privilege-dependent symbolic-link test. The single CLI integration test read the supplied sample pair
-as-is and passed: **16.12 seconds expected, 16.12 seconds actual**, with a fixed
-**0.5-second absolute tolerance**. Temporary output was removed afterward.
-
-MoviePy uses FFmpeg bundled inside `.venv`; neither system FFmpeg nor ffprobe is
-on `PATH`. Originals were preserved. Review against both capability specs
-confirmed segment validation, clipping/merging, and protected publication with
-library defaults, without custom media settings or additional installation
-requirements. MoviePy emitted NumPy deprecation and subprocess resource warnings
-during the passing test run.
-
-The CLI validates all selections before rendering, keeps temporary video/audio
-beside the destination, and publishes only a completed, closed result without
-overwriting existing files.
-
-## Usage
-
-From the repository root, with your recording and selections under `input/`:
+Put the recording and its selection file in `input/`. From the repository root,
+run:
 
 ```powershell
 $env:PYTHONPATH = (Resolve-Path .\src).Path
 .\.venv\Scripts\python.exe -m video_editor --input input/sample.mp4 --segments input/sample-selections.txt --output output/edited-sample.mp4
 ```
 
-The output parent directory must already exist, and the output filename must be
-new. Quote paths containing spaces. Use `--help` for argument help. MoviePy shows
-rendering progress; success prints the output path and returns exit status 0.
-Errors go to standard error and return nonzero. Originals are never overwritten.
+Choose a new filename in an existing output directory. Quote paths that contain
+spaces. The editor prints the saved file's path when it finishes. Run
+`python -m video_editor --help` with the virtual environment's interpreter to see
+all arguments.
 
-### Troubleshooting
+### Write a selection file
 
-| Problem | Action |
-| --- | --- |
-| Missing or unusable dependencies | Activate `.venv` and run `python -m pip install -r requirements.txt`; use `--force-reinstall` if bundled FFmpeg needs restoring. |
-| Invalid selections | Correct the reported line; use whole-number seconds and chronological, non-overlapping ranges within the recording. |
-| Existing output or input alias | Choose a different output filename. Files created during rendering are also protected. |
-| Rendering or permission failure | Check source readability, destination permissions, and free disk space. Partial renders are not published. |
-| Cancellation | Press Ctrl+C; the command attempts cleanup and returns status 130. |
-| Cleanup failure | Close programs holding files open and remove only the reported temporary directory. A completed output may already exist. |
-
-## Manual selection files
-
-Use a UTF-8 text file with one `start,end` range per line to select sections to
-**keep** on the original recording's timeline:
+In a UTF-8 text file, write one `start,end` pair per line for each section you
+want to keep. This example keeps the first five seconds, seconds 10 through 20,
+and everything from second 90 to the end.
 
 ```text
 0,5
@@ -114,42 +44,45 @@ Use a UTF-8 text file with one `start,end` range per line to select sections to
 90,end
 ```
 
-Use whole-number seconds written as ASCII digits (`[0-9]+`): `0,5` is valid;
-`0,2.4` and `0,5.0` are invalid. Ranges include the start and exclude the end,
-must stay within the recording, and must be chronological without overlap.
-Adjacent ranges are allowed. Blank lines and surrounding whitespace are ignored.
+Use whole seconds written with digits 0–9. Each range includes its start and
+excludes its endpoint. List ranges in chronological order, within the
+recording's duration. Ranges can touch at an endpoint but cannot overlap. Blank
+lines and spaces around the values are ignored.
 
-The case-insensitive `end` keyword is allowed only as the final range's endpoint
-and preserves the exact video duration, including fractional seconds.
+Use `end` as the endpoint of the last range to keep the full ending, including
+any fractional second. The keyword is case-insensitive.
 
 ## Clipping and merging
 
-Each selected segment has length `end - start`. MoviePy clips these ranges from
-the original recording and merges them in order, using default MP4 writing
-settings. Selected audio follows the clips automatically; recordings without
-audio produce video-only output.
+The editor validates the selection file before rendering. MoviePy cuts the
+selected sections, joins them in order, and saves the result using its default
+MP4 settings. Audio from the selected sections carries over when the source
+contains audio. Rendering uses temporary disk space beside the destination,
+and the editor saves the final MP4 only after rendering finishes.
 
-The integration test checks that final duration differs from the sum of selected
-lengths by no more than **0.5 seconds**. Rendering uses memory and needs extra disk
-space for temporary video and audio; large recordings may take time. Frame-rate,
-frame-accuracy, encoding-quality, and measured audio-sync guarantees are outside
-scope.
+## Run the tests
 
-Provide your own `input/sample.mp4` and matching `input/sample-selections.txt`
-for the single media integration test; both files are read as-is. Missing samples
-fail with `Required integration sample files missing` and the expected paths;
-the test never generates or replaces them. Run the unit and integration tests:
+To run the unit tests and the real-video integration test, provide
+`input/sample.mp4` and a matching `input/sample-selections.txt`. The integration
+test uses both files as supplied and fails with the missing paths if either is
+absent.
 
 ```powershell
 $env:PYTHONPATH = (Resolve-Path .\src).Path
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-## Project Structure
+The integration test runs the CLI, checks that it succeeds, and opens the
+finished MP4 to measure its duration. It calculates the expected duration
+independently by adding up the selected ranges. The measured duration must be
+within **0.5 seconds** of that total. The test creates its edited video in a
+temporary folder under `output/` and cleans it up afterward.
 
-- src/video_editor/ - Application source code.
-- tests/ - Application tests.
-- input/ - Original video recordings.
-- output/ - Generated video recordings.
-- requirements.txt - Python dependencies.
-- AGENTS.md - AI coding assistant instructions.
+## Project structure
+
+- `src/video_editor/` — Application source code.
+- `tests/` — Unit and integration tests.
+- `input/` — Original recordings and selection files.
+- `output/` — Edited recordings.
+- `requirements.txt` — Python dependencies.
+- `AGENTS.md` — Instructions for coding agents.
